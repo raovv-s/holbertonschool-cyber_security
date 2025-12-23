@@ -1,2 +1,2 @@
 #!/bin/bash
-sudo nslookup -type=A holbertonschool.com
+sudo nslookup -type=A "$1"

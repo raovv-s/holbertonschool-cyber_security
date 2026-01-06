@@ -1,2 +1,2 @@
 #!/bin/bash
-sudo nmap -sA -p22,80,443
+sudo nmap -sn -PA22,80,443

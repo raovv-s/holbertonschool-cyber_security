@@ -1,0 +1,10 @@
+GET /api/a3/sql_injection/all_orders?status=pending HTTP/1.1
+Host: web0x01.hbtn
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0
+Accept: */*
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate, br
+Referer: http://web0x01.hbtn/a3/sql_injection/
+Connection: keep-alive
+Cookie: session=T6zn14K-7S5NR0xr4mI6o4MadhhU71cZAg226UXxSqw._RIhm7ytVuZXw0B1UCa-9nfXQAs
+Priority: u=0

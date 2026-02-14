@@ -1,2 +1,2 @@
 #!/bin/bash
-setsebool -P http_can_sendmail on
+setsebool -P httpd_can_sendmail on

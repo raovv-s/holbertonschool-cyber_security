@@ -1,2 +1,2 @@
 #!/bin/bash
-semanage -P http_can_sendmail on
+setsebool -P http_can_sendmail on

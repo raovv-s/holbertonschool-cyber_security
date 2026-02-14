@@ -1,2 +1,2 @@
 #!/bin/bash
-getsebooleans -l
+semanage booleans -l

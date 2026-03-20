@@ -1,2 +1,2 @@
 #!/bin/bash
-nmap -p20,25 -sN $1
+sudo nmap -p20,25 -sN $1

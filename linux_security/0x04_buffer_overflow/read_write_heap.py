@@ -1,7 +1,9 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
+
 """Head based Buffer
 Overflow exploit script.
 """
+
 import sys
 
 

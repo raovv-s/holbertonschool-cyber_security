@@ -1,117 +1,106 @@
 #!/usr/bin/python3
-"""Read/write a string in another process heap via /proc."""
+"""
+A script that reads and writes to heap
+"""
 
 import sys
 
 
-def usage_error(msg):
-    print(msg, file=sys.stdout)
-    sys.exit(1)
+def get_heap_bounds(pid):
+    """
+    Retrieve the start and end addresses of the heap segment
+    for a given process.
 
+    Args:
+        pid (str): Process ID.
 
-def parse_heap_regions(pid):
-    path = f"/proc/{pid}/maps"
+    Returns:
+        tuple: Start and end addresses of the heap as integers.
+    """
     try:
-        with open(path, "r", encoding="utf-8", errors="replace") as f:
-            lines = f.readlines()
-    except OSError as e:
-        usage_error(f"error: cannot read {path}: {e}")
+        with open(f'/proc/{pid}/maps', 'r') as maps_file:
+            for line in maps_file:
+                if "[heap]" in line:
+                    addr_range = line.split(' ')[0]
+                    start_str, end_str = addr_range.split('-')
+                    start_addr = int(start_str, 16)
+                    end_addr = int(end_str, 16)
+                    return start_addr, end_addr
+        print("Error: Heap segment not found.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Exception in get_heap_bounds: {e}")
+        sys.exit(1)
 
-    regions = []
-    for line in lines:
-        if "[heap]" not in line:
-            continue
-        parts = line.split()
-        if len(parts) < 2:
-            continue
-        start_hex, end_hex = parts[0].split("-", 1)
-        if "r" not in parts[1]:
-            continue
-        start = int(start_hex, 16)
-        end = int(end_hex, 16)
-        if end > start:
-            regions.append((start, end))
-    return regions
+
+def read_heap_memory(pid, start_addr, end_addr):
+    """
+    Read the contents of a process's heap memory.
+
+    Args:
+        pid (str): Process ID.
+        start_addr (int): Start address of the heap.
+        end_addr (int): End address of the heap.
+
+    Returns:
+        bytes: Data read from the heap segment.
+    """
+    try:
+        with open(f'/proc/{pid}/mem', 'rb') as mem_file:
+            mem_file.seek(start_addr)
+            return mem_file.read(end_addr - start_addr)
+    except Exception as e:
+        print(f"Exception in read_heap_memory: {e}")
+        sys.exit(1)
+
+
+def write_to_heap(pid, target_addr, data):
+    """
+    Write data to a specific address in the process's heap.
+
+    Args:
+        pid (str): Process ID.
+        target_addr (int): Memory address to write data to.
+        data (bytes): Data to be written.
+    """
+    try:
+        with open(f'/proc/{pid}/mem', 'rb+') as mem_file:
+            mem_file.seek(target_addr)
+            mem_file.write(data)
+    except Exception as e:
+        print(f"Exception in write_to_heap: {e}")
+        sys.exit(1)
 
 
 def main():
+    """
+    Main function to locate a string in the heap of a running process
+    and replace it with another string of equal or shorter length.
+    """
     if len(sys.argv) != 4:
-        usage_error(
-            "usage: read_write_heap.py pid search_string replace_string"
-        )
+        print('Usage: read_write_heap.py <pid>\
+                <search_string> <replace_string>')
+        sys.exit(1)
 
     try:
-        pid = int(sys.argv[1])
-    except ValueError:
-        usage_error("error: pid must be an integer")
+        pid = sys.argv[1]
+        search_bytes = sys.argv[2].encode()
+        replacement_bytes = sys.argv[3]\
+            .encode().ljust(len(search_bytes), b'\x00')
 
-    if pid <= 0:
-        usage_error("error: pid must be positive")
+        heap_start, heap_end = get_heap_bounds(pid)
+        heap_data = read_heap_memory(pid, heap_start, heap_end)
 
-    try:
-        search = sys.argv[2].encode("ascii")
-        replace = sys.argv[3].encode("ascii")
-    except UnicodeEncodeError:
-        usage_error("error: strings must be ASCII")
+        offset = heap_data.find(search_bytes)
+        if offset == -1:
+            print("Error: Search string not found in heap.")
+            sys.exit(1)
 
-    if not search:
-        usage_error("error: search_string must be non-empty")
-
-    if len(replace) > len(search):
-        usage_error(
-            "error: replace_string must not be longer than search_string"
-        )
-
-    padded = replace + b"\x00" * (len(search) - len(replace))
-
-    regions = parse_heap_regions(pid)
-    if not regions:
-        usage_error("error: no readable [heap] region in maps")
-
-    mem_path = f"/proc/{pid}/mem"
-    total = 0
-
-    try:
-        mem = open(mem_path, "r+b", buffering=0)
-    except OSError as e:
-        usage_error(f"error: cannot open {mem_path}: {e}")
-
-    try:
-        with mem:
-            for start, end in regions:
-                size = end - start
-                try:
-                    mem.seek(start)
-                    data = mem.read(size)
-                except OSError as e:
-                    usage_error(f"error: cannot read heap [{start:#x}-{end:#x}): {e}")
-
-                if len(data) != size:
-                    usage_error(
-                        f"error: incomplete heap read [{start:#x}-{end:#x}) "
-                        f"({len(data)}/{size} bytes)"
-                    )
-
-                idx = 0
-                while True:
-                    pos = data.find(search, idx)
-                    if pos == -1:
-                        break
-                    addr = start + pos
-                    try:
-                        mem.seek(addr)
-                        mem.write(padded)
-                    except OSError as e:
-                        usage_error(f"error: write failed at {addr:#x}: {e}")
-                    total += 1
-                    idx = pos + len(search)
-    except OSError as e:
-        usage_error(f"error: {mem_path}: {e}")
-
-    if total == 0:
-        usage_error("error: string not found in heap")
-
-    print("SUCCESS!")
+        write_address = heap_start + offset
+        write_to_heap(pid, write_address, replacement_bytes)
+    except Exception as e:
+        print(f"Exception in main: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

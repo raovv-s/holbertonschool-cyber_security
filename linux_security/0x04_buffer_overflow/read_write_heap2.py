@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
-"""Head based Buffer
-Overflow exploit script.
-"""
+#!/usr/bin/python3
+
+"""Find an ASCII string in a process heap and replace it in place via /proc."""
+
 import sys
 
 
@@ -100,7 +100,7 @@ def main():
                 except OSError as e:
                     print(
                         f"warning: could not read heap [{start:#x}-{end:#x}): {e}",
-                        file=sys.stderr,
+                        file=sys.stdout,
                     )
                     continue
 
@@ -108,7 +108,7 @@ def main():
                     print(
                         f"warning: short read at [{start:#x}-{end:#x}): "
                         f"got {len(heap_data)} of {size} bytes",
-                        file=sys.stderr,
+                        file=sys.stdout,
                     )
 
                 offsets = find_non_overlapping(heap_data, search)
@@ -120,6 +120,9 @@ def main():
                     except OSError as e:
                         usage_error(f"error: write failed at {addr:#x}: {e}")
                     total_writes += 1
+                    print(
+                        f"replaced {len(search)} bytes at heap address {addr:#x}"
+                    )
     except OSError as e:
         usage_error(f"error: {mem_path}: {e}")
 
@@ -127,7 +130,7 @@ def main():
         print("no occurrences found in heap", file=sys.stdout)
         sys.exit(1)
 
-    print("SUCCESS!")
+    print(f"total replacements: {total_writes}")
 
 
 if __name__ == "__main__":

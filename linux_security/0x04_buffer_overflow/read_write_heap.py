@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
+
 """Find an ASCII string in a process heap and replace it in place via /proc."""
 
 import sys

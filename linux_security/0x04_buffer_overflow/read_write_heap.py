@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""HEAP Bufferoverflow"""
+"""Read/write a string in another process heap via /proc."""
 
 import sys
 
@@ -25,28 +25,13 @@ def parse_heap_regions(pid):
         if len(parts) < 2:
             continue
         start_hex, end_hex = parts[0].split("-", 1)
-        perms = parts[1]
-        if "r" not in perms:
+        if "r" not in parts[1]:
             continue
         start = int(start_hex, 16)
         end = int(end_hex, 16)
         if end > start:
             regions.append((start, end))
     return regions
-
-
-def find_non_overlapping(haystack, needle):
-    out = []
-    idx = 0
-    n = len(needle)
-    limit = len(haystack) - n
-    while idx <= limit:
-        pos = haystack.find(needle, idx)
-        if pos == -1:
-            break
-        out.append(pos)
-        idx = pos + n
-    return out
 
 
 def main():
@@ -84,36 +69,42 @@ def main():
         usage_error("error: no readable [heap] region in maps")
 
     mem_path = f"/proc/{pid}/mem"
+    total = 0
+
     try:
         mem = open(mem_path, "r+b", buffering=0)
     except OSError as e:
         usage_error(f"error: cannot open {mem_path}: {e}")
 
-    total = 0
     try:
         with mem:
             for start, end in regions:
                 size = end - start
                 try:
                     mem.seek(start)
-                    heap_data = mem.read(size)
+                    data = mem.read(size)
                 except OSError as e:
-                    usage_error(f"error: cannot read heap at {start:#x}: {e}")
+                    usage_error(f"error: cannot read heap [{start:#x}-{end:#x}): {e}")
 
-                if len(heap_data) < size:
+                if len(data) != size:
                     usage_error(
-                        f"error: short read heap [{start:#x}-{end:#x}) "
-                        f"({len(heap_data)}/{size} bytes)"
+                        f"error: incomplete heap read [{start:#x}-{end:#x}) "
+                        f"({len(data)}/{size} bytes)"
                     )
 
-                for off in find_non_overlapping(heap_data, search):
-                    addr = start + off
+                idx = 0
+                while True:
+                    pos = data.find(search, idx)
+                    if pos == -1:
+                        break
+                    addr = start + pos
                     try:
                         mem.seek(addr)
                         mem.write(padded)
                     except OSError as e:
                         usage_error(f"error: write failed at {addr:#x}: {e}")
                     total += 1
+                    idx = pos + len(search)
     except OSError as e:
         usage_error(f"error: {mem_path}: {e}")
 

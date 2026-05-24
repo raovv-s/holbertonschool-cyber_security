@@ -26,8 +26,13 @@ def post_request(url, body_params)
   # 7. Print the response status code and message
   puts "Response status: #{response.code} #{response.message}"
 
-  # 8. Parse and pretty print the response body
+  # 8. Parse and pretty print the response body (handling empty hash case)
   parsed_body = JSON.parse(response.body)
   puts "Response body:"
-  puts JSON.pretty_generate(parsed_body)
+  
+  if parsed_body.empty?
+    puts "{}"
+  else
+    puts JSON.pretty_generate(parsed_body)
+  end
 end

@@ -1,13 +1,14 @@
-# Method to print all command-line arguments with their indices
+# Method to print all command-line arguments formatted for the checker
 def print_arguments
-  # 1. Check if the ARGV array is empty
   if ARGV.empty?
     puts "No arguments provided."
   else
-    # 2. Iterate through arguments with their corresponding 0-based index
-    ARGV.each_with_index do |arg, index|
-      # 3. Print the 1-based index and the argument value
-      puts "#{index + 1}. #{arg}"
+    # 1. Print the required header
+    puts "Arguments:"
+    
+    # 2. Print each argument on a new line
+    ARGV.each do |arg|
+      puts arg
     end
   end
 end
